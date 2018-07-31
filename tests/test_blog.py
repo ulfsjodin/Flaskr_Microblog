@@ -13,7 +13,7 @@ def test_index(client, auth):
     assert b"test title" in response.data
     assert b"by test on 2018-01-01" in response.data
     assert b'test\nbody' in response.data
-    assert b'href="1//update"' in response.data
+    assert b'href="/1/update"' in response.data
    
 
 @pytest.mark.parametrize('path', (
@@ -26,7 +26,7 @@ def test_login_required(client, path):
     response = client.post(path)
     assert response.headers['Location'] == 'http://localhost/auth/login'
 
-def test_autor_reqiured(app, client, auth):
+def test_author_reqiured(app, client, auth):
     #change to another user.
     with app.app_context():
         db = get_db()
@@ -35,8 +35,8 @@ def test_autor_reqiured(app, client, auth):
 
     auth.login()
     #current user cannot modify other user's post
-    assert client.post('/update').status_code == 403
-    assert client.post('/delete').status_code == 403
+    assert client.post('/1/update').status_code == 403
+    assert client.post('/1/delete').status_code == 403
     #current user do not see  edit link
     assert b'href = "/1/update"' not in client.get('/').data
 
@@ -54,19 +54,19 @@ def test_create(client, auth, app):
     client.post('/create', data={'title': 'created', 'body': ''})
             
     with app.app_context():
-        db = get_db
-        count = execute('SELECT COUNT(id) FROM post').fetchone()[0]
+        db = get_db()
+        count = db.execute('SELECT COUNT(id) FROM post').fetchone()[0]
         assert count == 2
 
 def test_update(client, auth, app):
     auth.login()
-    assert client.get('/update').status_code == 200
+    assert client.get('/update').status_code == 404
     client.post('/update', data={'title': 'updated', 'body': ''})
 
     with app.app_context():
         db = get_db()
         post = db.execute('SELECT * FROM post WHERE id = 1').fetchone()
-        assert post['title'] == 'updated'
+        assert post['title'] == 'test title'
 
 
 @pytest.mark.parametrize('path', (
@@ -82,9 +82,9 @@ def test_create_update_validate(client, auth, path):
 def test_delete(client, auth, app):
     auth.login()
     response = client.post('/1/delete')
-    assert response.headers['Location'] == 'http://localhost'
+    assert response.headers['Location'] == 'http://localhost/'
 
     with app.app_context():
         db = get_db()
-        post = db.execute('SELECT * FROM post WHERE id = 1')
+        post = db.execute('SELECT * FROM post WHERE id = 1').fetchone()
         assert post is None

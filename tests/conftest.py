@@ -3,26 +3,30 @@ import tempfile
 
 import pytest
 from flaskr import create_app
-from flaskr import get_db, init_db
+from flaskr.db import get_db, init_db
 
 with open(os.path.join(os.path.dirname(__file__), 'data.sql'), 'rb') as f:
     _data_sql = f.read().decode('utf-8')
 
 @pytest.fixture
 def app():
-    db_fd, db_path = tempfile.mktemp()
-
+    """Create and configure a new app instance for each test"""
+    # create a temporary file to isolate the database for each test
+    db_fd, db_path = tempfile.mkstemp()
+    # create the app with common test config
     app = create_app({
         'TESTING': True,
         'DATABASE': db_path,
     })
 
+    # create the database and load test data
     with app.app_context():
         init_db()
-        get_db().executescript(_data_sql_)
+        get_db().executescript(_data_sql)
 
     yield app
 
+    # close and remove the temporary database
     os.close(db_fd)
     os.unlink(db_path)
     
@@ -34,7 +38,7 @@ def client(app):
 def runner(app):
     return app.test_cli_runner()
 
-class Auth_actions(object):
+class AuthActions(object):
     def __init__(self, client):
         self._client = client
 
@@ -50,4 +54,4 @@ class Auth_actions(object):
 
 @pytest.fixture
 def auth(client):
-    return Auth_actions(client)
+    return AuthActions(client)
